@@ -1,8 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
-
-# Config
-st.set_page_config(page_title="Venture Opportunity Scanner", page_icon="🔍")
+from groq import Groq
 
 SYSTEM_PROMPT = """
 Eres un analista experto en corporate venture building con experiencia en identificar 
@@ -61,15 +58,14 @@ generar un brief de oportunidad estructurado exactamente así:
 siendo directo y argumentado]
 
 ---
-
 Sé siempre concreto, evita generalidades. Usa ejemplos reales del sector cuando puedas.
 """
 
-# UI
+st.set_page_config(page_title="Venture Opportunity Scanner", page_icon="🔍")
 st.title("🔍 Venture Opportunity Scanner")
 st.caption("Genera briefs de oportunidad de negocio en segundos")
 
-api_key = st.text_input("API Key de Google AI Studio", type="password")
+api_key = st.text_input("API Key de Groq", type="password")
 sector = st.text_input("Sector", placeholder="ej. alimentación y restauración")
 cliente = st.text_input("Cliente corporativo (opcional)", placeholder="ej. Heineken")
 
@@ -79,16 +75,18 @@ if st.button("Generar brief", type="primary"):
     else:
         with st.spinner("Analizando oportunidades..."):
             try:
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel(
-                    model_name="gemini-2.0-flash",
-                    system_instruction=SYSTEM_PROMPT
-                )
+                client = Groq(api_key=api_key)
                 user_input = f"Sector: {sector}."
                 if cliente:
                     user_input += f" Cliente: {cliente}."
-                
-                response = model.generate_content(user_input)
-                st.markdown(response.text)
+
+                response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": user_input}
+                    ]
+                )
+                st.markdown(response.choices[0].message.content)
             except Exception as e:
                 st.error(f"Error: {e}")
