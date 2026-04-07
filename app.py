@@ -61,31 +61,65 @@ siendo directo y argumentado]
 Sé siempre concreto, evita generalidades. Usa ejemplos reales del sector cuando puedas.
 """
 
-st.set_page_config(page_title="Venture Opportunity Scanner", page_icon="🔍")
-st.title("🔍 Venture Opportunity Scanner")
-st.caption("Genera briefs de oportunidad de negocio en segundos")
+st.set_page_config(page_title="Venture Opportunity Scanner", page_icon="🔍", layout="wide")
 
-sector = st.text_input("Sector", placeholder="ej. alimentación y restauración")
-cliente = st.text_input("Cliente corporativo (opcional)", placeholder="ej. Heineken")
+if "historial" not in st.session_state:
+    st.session_state.historial = []
 
-if st.button("Generar brief", type="primary"):
-    if not sector:
-        st.warning("Introduce el sector.")
+# Layout: columna principal + sidebar con historial
+col_main, col_hist = st.columns([2, 1])
+
+with col_main:
+    st.title("🔍 Venture Opportunity Scanner")
+    st.caption("Genera briefs de oportunidad de negocio en segundos")
+
+    sector = st.text_input("Sector", placeholder="ej. alimentación y restauración")
+    cliente = st.text_input("Cliente corporativo (opcional)", placeholder="ej. Heineken")
+
+    if st.button("Generar brief", type="primary"):
+        if not sector:
+            st.warning("Introduce el sector.")
+        else:
+            with st.spinner("Analizando oportunidades..."):
+                try:
+                    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+                    user_input = f"Sector: {sector}."
+                    if cliente:
+                        user_input += f" Cliente: {cliente}."
+
+                    response = client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": user_input}
+                        ]
+                    )
+                    resultado = response.choices[0].message.content
+
+                    # Guardar en historial
+                    etiqueta = f"{sector}" + (f" · {cliente}" if cliente else "")
+                    st.session_state.historial.insert(0, {
+                        "etiqueta": etiqueta,
+                        "sector": sector,
+                        "cliente": cliente,
+                        "resultado": resultado
+                    })
+
+                    st.markdown(resultado)
+
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+with col_hist:
+    st.subheader("📋 Historial")
+
+    if not st.session_state.historial:
+        st.caption("Aún no hay briefs generados.")
     else:
-        with st.spinner("Analizando oportunidades..."):
-            try:
-                client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-                user_input = f"Sector: {sector}."
-                if cliente:
-                    user_input += f" Cliente: {cliente}."
+        if st.button("🗑️ Limpiar historial"):
+            st.session_state.historial = []
+            st.rerun()
 
-                response = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": user_input}
-                    ]
-                )
-                st.markdown(response.choices[0].message.content)
-            except Exception as e:
-                st.error(f"Error: {e}")
+        for i, item in enumerate(st.session_state.historial):
+            with st.expander(f"{'🟢' if i == 0 else '⚪'} {item['etiqueta']}"):
+                st.markdown(item["resultado"])
