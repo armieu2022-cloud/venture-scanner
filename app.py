@@ -65,17 +65,16 @@ st.set_page_config(page_title="Venture Opportunity Scanner", page_icon="🔍")
 st.title("🔍 Venture Opportunity Scanner")
 st.caption("Genera briefs de oportunidad de negocio en segundos")
 
-api_key = st.text_input("API Key de Groq", type="password")
 sector = st.text_input("Sector", placeholder="ej. alimentación y restauración")
 cliente = st.text_input("Cliente corporativo (opcional)", placeholder="ej. Heineken")
 
 if st.button("Generar brief", type="primary"):
-    if not api_key or not sector:
-        st.warning("Introduce la API key y el sector.")
+    if not sector:
+        st.warning("Introduce el sector.")
     else:
         with st.spinner("Analizando oportunidades..."):
             try:
-                client = Groq(api_key=api_key)
+                client = Groq(api_key=st.secrets["GROQ_API_KEY"])
                 user_input = f"Sector: {sector}."
                 if cliente:
                     user_input += f" Cliente: {cliente}."
